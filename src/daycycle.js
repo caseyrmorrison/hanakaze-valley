@@ -8,7 +8,7 @@ export const MOODS = [
     top: "#4d9dff", horizon: "#cdeaff", sunColor: "#fff2cc",
     hemiSky: "#d4ebff", hemiGround: "#6f8f4c", hemiIntensity: 1.2,
     fog: "#cfe4f5", fogDensity: 0.0013, clouds: "#ffffff",
-    stars: 0, sunVis: 1, moonVis: 0, lanterns: 0, fireflies: 0, grass: "#ffffff",
+    stars: 0, sunVis: 1, moonVis: 0, lanterns: 0, fireflies: 0, grass: "#ffffff", night: 0,
   },
   {
     name: "Golden hour",
@@ -16,7 +16,7 @@ export const MOODS = [
     top: "#3f86e0", horizon: "#ffcf9e", sunColor: "#ffb070",
     hemiSky: "#ffd9b8", hemiGround: "#6e5a48", hemiIntensity: 1.0,
     fog: "#f6c7a2", fogDensity: 0.0015, clouds: "#ffe1c9",
-    stars: 0, sunVis: 1, moonVis: 0, lanterns: 0.4, fireflies: 0, grass: "#ffe9c8",
+    stars: 0, sunVis: 1, moonVis: 0, lanterns: 0.4, fireflies: 0, grass: "#ffe9c8", night: 0.1,
   },
   {
     name: "Twilight",
@@ -24,7 +24,7 @@ export const MOODS = [
     top: "#26306e", horizon: "#f28c9b", sunColor: "#ff7a6a",
     hemiSky: "#9d86c4", hemiGround: "#3b3150", hemiIntensity: 1.0,
     fog: "#9e7cab", fogDensity: 0.0017, clouds: "#e0a3c3",
-    stars: 0.45, sunVis: 0.6, moonVis: 0.5, lanterns: 1, fireflies: 0.5, grass: "#c7abd6",
+    stars: 0.45, sunVis: 0.6, moonVis: 0.5, lanterns: 1, fireflies: 0.5, grass: "#c7abd6", night: 0.55,
   },
   {
     name: "Night",
@@ -32,7 +32,7 @@ export const MOODS = [
     top: "#070b26", horizon: "#27346c", sunColor: "#000000",
     hemiSky: "#4556a0", hemiGround: "#121a30", hemiIntensity: 0.9,
     fog: "#1a2350", fogDensity: 0.0016, clouds: "#46558e",
-    stars: 1, sunVis: 0, moonVis: 1, lanterns: 1.6, fireflies: 1, grass: "#7483c4",
+    stars: 1, sunVis: 0, moonVis: 1, lanterns: 1.6, fireflies: 1, grass: "#7483c4", night: 1,
   },
 ];
 

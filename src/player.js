@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { WORLD, heightAt } from "./terrain.js";
+import { WORLD, heightAt, distToPath } from "./terrain.js";
 
 const EYE = 1.65;
 
@@ -78,6 +78,14 @@ export class Player {
     return y;
   }
 
+  // What's underfoot, for footstep sounds.
+  surface() {
+    const { x, z, y } = this.pos;
+    if (y > 0.6 && heightAt(x, z) < 0.6) return "wood";
+    if (heightAt(x, z) < 0.25) return "water";
+    return distToPath(x, z) < 1.8 ? "dirt" : "grass";
+  }
+
   update(dt) {
     const k = this.keys;
     let fx = (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0) - (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0);
@@ -112,16 +120,22 @@ export class Player {
 
     const ground = this.floorAt(this.pos.x, this.pos.z);
     const grounded = this.pos.y <= ground + 0.01;
-    if (grounded && this.enabled && k.has("Space")) this.vy = 6;
+    if (grounded && this.enabled && k.has("Space")) {
+      this.vy = 6;
+      this.onJump?.();
+    }
     this.vy -= 18 * dt;
     this.pos.y += this.vy * dt;
     if (this.pos.y < ground) {
+      if (this.vy < -4) this.onLand?.(-this.vy, this.surface());
       this.pos.y = ground;
       this.vy = 0;
     }
 
     const moving = len > 0.1 && grounded;
+    const lastStep = Math.floor(this.stride / Math.PI);
     this.stride += moving ? dt * speed * 1.6 : 0;
+    if (Math.floor(this.stride / Math.PI) !== lastStep) this.onStep?.(this.surface(), speed > 6);
     const bob = moving ? Math.sin(this.stride) * 0.05 : 0;
 
     this.camera.position.set(this.pos.x, this.pos.y + EYE + bob, this.pos.z);

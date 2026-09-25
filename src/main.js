@@ -12,6 +12,7 @@ import { createStructures } from "./structures.js";
 import { createWater } from "./water.js";
 import { createPetals, createFireflies } from "./effects.js";
 import { Player } from "./player.js";
+import { Soundscape } from "./audio.js";
 import { MOODS, blendMoods, dirFromAngles } from "./daycycle.js";
 import { mulberry32 } from "./instancer.js";
 
@@ -57,6 +58,24 @@ const fireflies = createFireflies(groundTex);
 scene.add(sky.mesh, clouds.group, terrain, grass.mesh, trees.group, structures.group, water.mesh, petals.mesh, fireflies.points);
 
 const player = new Player(camera, canvas, colliders);
+
+// ---------- sound ----------
+const sound = new Soundscape();
+const soundBtn = document.getElementById("sound");
+player.onStep = (surface, running) => sound.step(surface, running);
+player.onJump = () => sound.jump();
+player.onLand = (impact, surface) => sound.land(impact, surface);
+
+function showSoundState() {
+  soundBtn.classList.toggle("off", sound.muted);
+  soundBtn.setAttribute("aria-label", sound.muted ? "Turn sound on" : "Turn sound off");
+}
+function toggleSound() {
+  sound.toggle();
+  showSoundState();
+}
+soundBtn.addEventListener("click", toggleSound);
+showSoundState();
 
 // ---------- post ----------
 const composer = new EffectComposer(renderer);
@@ -108,6 +127,7 @@ function applyMood(s) {
 
   fireflies.uniforms.uAmount.value = s.fireflies;
   fireflies.points.visible = s.fireflies > 0.01;
+  sound.setMood(s);
 }
 
 function nextMood() {
@@ -117,10 +137,12 @@ function nextMood() {
   moodTo = MOODS[moodIndex];
   moodStart = clock.elapsedTime;
   clockEl.textContent = moodTo.name;
+  sound.chime();
 }
 
 addEventListener("keydown", (e) => {
   if (e.code === "KeyT") nextMood();
+  if (e.code === "KeyM") toggleSound();
 });
 
 // ---------- places ----------
@@ -142,6 +164,7 @@ function updatePlace(dt) {
       placeEl.textContent = here.name;
       placeEl.classList.add("show");
       placeTimer = 4;
+      if (here.name === "Kaze Shrine") sound.shrine();
     }
   }
   placeTimer -= dt;
@@ -154,6 +177,8 @@ document.getElementById("enter").addEventListener("click", () => {
   titleCard.classList.add("gone");
   document.getElementById("hud").hidden = false;
   player.enabled = true;
+  soundBtn.hidden = false;
+  sound.start();
   canvas.requestPointerLock?.()?.catch?.(() => {});
 });
 
@@ -195,6 +220,7 @@ function frame() {
     u.uCenter.value.copy(camera.position);
   }
   water.uniforms.uTime.value = t;
+  sound.update(dt, t, player.pos);
 
   composer.render();
   requestAnimationFrame(frame);

@@ -109,6 +109,43 @@ html, body {
 
 #place.show { opacity: 1; }
 
+#sound {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.2s;
+}
+
+#sound:hover { background: rgba(255, 255, 255, 0.3); }
+#sound:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+#sound[hidden] { display: none; }
+
+#sound svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#sound .spk { fill: currentColor; }
+#sound .slash { display: none; }
+#sound.off .waves { display: none; }
+#sound.off .slash { display: inline; }
+
 @media (prefers-reduced-motion: reduce) {
-  #title-card, #enter, #place { transition: none; }
+  #title-card, #enter, #place, #sound { transition: none; }
 }
