@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Hanakaze Valley</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="world"></canvas>
+
+  <div id="title-card">
+    <h1>花風の谷</h1>
+    <p class="sub">Hanakaze Valley</p>
+    <button id="enter">Enter the valley</button>
+    <p class="hint">WASD to walk · mouse or drag to look · Shift to run · Space to jump<br />T cycles time of day · Esc releases the mouse · touch: left thumb walks, right looks</p>
+  </div>
+
+  <div id="hud" hidden>
+    <span id="clock">Golden hour</span>
+    <span id="place"></span>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
