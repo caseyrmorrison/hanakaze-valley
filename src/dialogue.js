@@ -29,7 +29,7 @@ export class Dialogue {
     }
     this.box.style.setProperty("--who", member.accent);
     this.nameEl.textContent = member.name;
-    this.roleEl.textContent = member.role;
+    this.roleEl.textContent = `${member.role}, ${member.age}`;
     this.box.hidden = false;
     this.prompt.hidden = true;
     this.next();
