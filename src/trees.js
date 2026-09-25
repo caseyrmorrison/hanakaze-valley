@@ -131,7 +131,7 @@ export function createTrees(rand, colliders) {
   place(pine, 320, 125, 215, 3, true);
 
   const ct = camphor(inst, camphorHill.x, camphorHill.z);
-  colliders.push({ x: ct.x, z: ct.z, r: 4.2 });
+  colliders.push({ x: ct.x, z: ct.z, r: 2.6 });
 
   return { group: inst.build(), camphor: ct };
 }

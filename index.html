@@ -21,7 +21,7 @@
     <h1>花風の谷</h1>
     <p class="sub">Hanakaze Valley</p>
     <button id="enter">Enter the valley</button>
-    <p class="hint">WASD to walk · mouse or drag to look · Shift to run · Space to jump<br />T cycles time of day · M mutes sound · Esc releases the mouse<br />Touch: left thumb walks, right thumb looks</p>
+    <p class="hint">WASD to walk · mouse or drag to look · Shift to run · Space to jump<br />E talks to people · T cycles time of day · M mutes sound · Esc releases the mouse<br />Touch: left thumb walks, right thumb looks</p>
   </div>
 
   <button id="sound" type="button" hidden aria-label="Turn sound off" title="Sound (M)">
@@ -31,6 +31,14 @@
       <path class="slash" d="M16 9l5 6M21 9l-5 6" />
     </svg>
   </button>
+
+  <button id="talk" type="button" hidden><kbd>E</kbd><span>Talk</span></button>
+
+  <div id="dialogue" hidden aria-live="polite">
+    <div class="tag"><strong id="dialogue-name"></strong><span id="dialogue-role"></span></div>
+    <p id="dialogue-text"></p>
+    <span class="more" aria-hidden="true">▼</span>
+  </div>
 
   <div id="hud" hidden>
     <span id="clock">Golden hour</span>

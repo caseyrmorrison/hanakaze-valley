@@ -39,6 +39,7 @@ export const WORLD = {
   shrineHill: { x: 0, z: -122, r: 40, h: 20 },
   camphorHill: { x: 88, z: 62, r: 32, h: 11 },
   village: { x: -58, z: 22, r: 30, h: 4 },
+  forecourt: { x: 0, z: -113, r: 9 },
   spawn: { x: 0, z: 46 },
 };
 
@@ -56,8 +57,10 @@ function distToSegment(px, pz, ax, az, bx, bz) {
 }
 
 export function distToPath(x, z) {
-  // the village square counts as path: packed dirt, no grass
-  let d = Math.max(0, Math.hypot(x - WORLD.village.x, z - WORLD.village.z) - 11);
+  // the village square and shrine forecourt count as path: packed dirt, no grass
+  const { village, forecourt } = WORLD;
+  let d = Math.max(0, Math.hypot(x - village.x, z - village.z) - 11);
+  d = Math.min(d, Math.max(0, Math.hypot(x - forecourt.x, z - forecourt.z) - forecourt.r + 1.5));
   for (const line of PATHS) {
     for (let i = 0; i < line.length - 1; i++) {
       d = Math.min(d, distToSegment(x, z, ...line[i], ...line[i + 1]));
@@ -71,12 +74,19 @@ function bump(x, z, cx, cz, r, h) {
   return d >= 1 ? 0 : h * (Math.cos(d * Math.PI) * 0.5 + 0.5);
 }
 
+let forecourtHeight;
+
 export function heightAt(x, z) {
   let h = 2.5 + (fbm(x * 0.011, z * 0.011) * 0.5 + 0.5) * 7;
 
   const { shrineHill: s, camphorHill: c, village: v, lake: l } = WORLD;
   h += bump(x, z, s.x, s.z, s.r, s.h);
   h += bump(x, z, c.x, c.z, c.r, c.h);
+
+  // level forecourt in front of the shrine
+  const f = WORLD.forecourt;
+  forecourtHeight ??= 2.5 + (fbm(f.x * 0.011, f.z * 0.011) * 0.5 + 0.5) * 7 + bump(f.x, f.z, s.x, s.z, s.r, s.h);
+  h = THREE.MathUtils.lerp(forecourtHeight, h, smoothstep(f.r, f.r + 5, Math.hypot(x - f.x, z - f.z)));
 
   // flatten the village terrace
   const dv = Math.hypot(x - v.x, z - v.z);

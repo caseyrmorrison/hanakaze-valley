@@ -267,6 +267,26 @@ export class Soundscape {
     if (this.running) this.music.flourish();
   }
 
+  // A soft syllable for dialogue; each resident has her own pitch.
+  blip(freq) {
+    if (!this.running) return;
+    const f = freq * (1 + (Math.random() - 0.5) * 0.12);
+    this.tone(this.ctx.currentTime, { freq: f, to: f * 1.08, dur: 0.07, type: "triangle", gain: 0.07, attack: 0.008 });
+  }
+
+  // The little "pop" when a manga symbol appears over someone's head.
+  pop() {
+    if (!this.running) return;
+    this.tone(this.ctx.currentTime, { freq: 520, to: 1100, dur: 0.12, gain: 0.08, wet: 0.2 });
+  }
+
+  // Kira-kira: a quick run of tiny bells.
+  sparkle() {
+    if (!this.running) return;
+    const t = this.ctx.currentTime;
+    [0, 1, 2, 3].forEach((i) => this.bell(t + i * 0.06, 2400 + i * 420, { gain: 0.03, decay: 0.8, partials: [1, 2.76], out: this.sfxBus, wet: 0.5 }));
+  }
+
   // Arrival at the shrine: a jingle of suzu bells, then a deep temple bell.
   shrine() {
     if (!this.running) return;

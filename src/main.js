@@ -13,6 +13,9 @@ import { createWater } from "./water.js";
 import { createPetals, createFireflies } from "./effects.js";
 import { Player } from "./player.js";
 import { Soundscape } from "./audio.js";
+import { createCast } from "./cast.js";
+import { updateCast, nearestTalkable } from "./behaviors.js";
+import { Dialogue } from "./dialogue.js";
 import { MOODS, blendMoods, dirFromAngles } from "./daycycle.js";
 import { mulberry32 } from "./instancer.js";
 
@@ -76,6 +79,16 @@ function toggleSound() {
 }
 soundBtn.addEventListener("click", toggleSound);
 showSoundState();
+
+// ---------- residents ----------
+const cast = createCast(scene, colliders);
+const dialogue = new Dialogue(sound);
+
+function interact() {
+  if (dialogue.open) dialogue.advance();
+  else if (dialogue.promptMember) dialogue.start(dialogue.promptMember);
+}
+document.getElementById("talk").addEventListener("click", interact);
 
 // ---------- post ----------
 const composer = new EffectComposer(renderer);
@@ -143,6 +156,7 @@ function nextMood() {
 addEventListener("keydown", (e) => {
   if (e.code === "KeyT") nextMood();
   if (e.code === "KeyM") toggleSound();
+  if (e.code === "KeyE" && player.enabled) interact();
 });
 
 // ---------- places ----------
@@ -221,6 +235,13 @@ function frame() {
   }
   water.uniforms.uTime.value = t;
   sound.update(dt, t, player.pos);
+
+  const gust = 0.55 + 0.45 * Math.sin(t * 0.21) * Math.sin(t * 0.083 + 1.3);
+  updateCast(cast, { dt, t, gust, player: player.pos, talkingTo: dialogue.member, sound });
+  if (player.enabled) {
+    dialogue.setPrompt(nearestTalkable(cast, player.pos, player.yaw));
+    dialogue.update(dt);
+  }
 
   composer.render();
   requestAnimationFrame(frame);

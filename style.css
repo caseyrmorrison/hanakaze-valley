@@ -146,6 +146,98 @@ html, body {
 #sound.off .waves { display: none; }
 #sound.off .slash { display: inline; }
 
+#talk {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 1.1rem 0.45rem 0.45rem;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  background: rgba(42, 29, 51, 0.45);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+#talk[hidden] { display: none; }
+#talk:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+#talk kbd {
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: #fff;
+  color: #2a1d33;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+#dialogue {
+  --who: #d8323c;
+  position: fixed;
+  left: 50%;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(640px, calc(100% - 32px));
+  padding: 1.6rem 1.4rem 1.1rem;
+  border: 3px solid var(--who);
+  border-radius: 18px;
+  background: rgba(255, 250, 246, 0.95);
+  color: #3a2c3f;
+  box-shadow: 0 10px 30px rgba(42, 29, 51, 0.35);
+  cursor: pointer;
+}
+
+#dialogue[hidden] { display: none; }
+
+#dialogue .tag {
+  position: absolute;
+  top: -1rem;
+  left: 1.1rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.25rem 0.9rem;
+  border-radius: 999px;
+  background: var(--who);
+  color: #fff;
+}
+
+#dialogue-name { font-size: 1.05rem; letter-spacing: 0.05em; }
+#dialogue-role { font-size: 0.75rem; letter-spacing: 0.04em; opacity: 0.9; }
+
+#dialogue-text {
+  margin: 0;
+  min-height: 3.2em;
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+
+#dialogue .more {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.6rem;
+  color: var(--who);
+  font-size: 0.8rem;
+  opacity: 0;
+}
+
+#dialogue.done .more {
+  opacity: 1;
+  animation: nudge 0.8s ease-in-out infinite;
+}
+
+@keyframes nudge { 50% { transform: translateY(3px); } }
+
 @media (prefers-reduced-motion: reduce) {
   #title-card, #enter, #place, #sound { transition: none; }
+  #dialogue.done .more { animation: none; }
 }
