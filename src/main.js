@@ -27,6 +27,9 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.NeutralToneMapping;
+canvas.addEventListener("webglcontextlost", () => {
+  window.showLoadError?.("The browser stopped the game's graphics (WebGL context lost). Reloading the page usually fixes it.");
+});
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0xffffff, 0.0025);
@@ -244,6 +247,7 @@ function frame() {
   }
 
   composer.render();
+  window.valleyStarted = true;
   requestAnimationFrame(frame);
 }
 
