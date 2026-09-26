@@ -5,6 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Hanakaze Valley</title>
   <link rel="stylesheet" href="style.css" />
+  <script>
+    // If the game can't start, say why on screen instead of leaving a blank page.
+    (function () {
+      function show(message) {
+        var el = document.getElementById("load-error");
+        if (!el) {
+          document.addEventListener("DOMContentLoaded", function () { show(message); });
+          return;
+        }
+        if (!el.hidden) return;
+        el.textContent = message;
+        el.hidden = false;
+      }
+      window.showLoadError = show;
+      window.addEventListener("error", function (e) {
+        var t = e.target;
+        var src = t && t !== window && (t.src || t.href);
+        if (!src) {
+          show("The game hit an error while starting: " + e.message);
+        } else if (/src\/main\.js/.test(src)) {
+          // The game module fails as a whole when a dependency can't load; check the 3D engine's CDN.
+          fetch("https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js", { mode: "no-cors" })
+            .then(function () { show("Part of the game failed to load. Reload the page to try again."); })
+            .catch(function () {
+              show("The game's 3D engine couldn't be downloaded from cdn.jsdelivr.net. If you use a content blocker or you're offline, allow that site and reload.");
+            });
+        } else {
+          show("The game couldn't load " + src + ".");
+        }
+      }, true);
+      window.addEventListener("unhandledrejection", function (e) {
+        show("The game hit an error while starting: " + ((e.reason && e.reason.message) || e.reason));
+      });
+      setTimeout(function () {
+        if (!window.valleyStarted) {
+          show("The game is taking too long to start. If you use a content blocker, allow cdn.jsdelivr.net, which serves the 3D engine, then reload.");
+        }
+      }, 15000);
+    })();
+  </script>
   <script type="importmap">
     {
       "imports": {
@@ -16,6 +56,7 @@
 </head>
 <body>
   <canvas id="world"></canvas>
+  <p id="load-error" role="alert" hidden></p>
 
   <div id="title-card">
     <h1>花風の谷</h1>
