@@ -1,4 +1,4 @@
-import { WORLD } from "./terrain.js";
+import { WORLD, riverInfo } from "./terrain.js";
 import { Music } from "./music.js";
 
 const MUTE_KEY = "hanakaze-muted";
@@ -78,6 +78,10 @@ export class Soundscape {
     this.wind = this.loop(this.ambBus, "bandpass", 500, 0.6);
     this.water = this.loop(this.ambBus, "lowpass", 450, 0.5);
     this.crickets = [this.cricket(4300, 1.3, 31, -0.6), this.cricket(4750, 0.9, 24, 0.5)];
+    this.falls = this.loop(this.ambBus, "lowpass", 1600, 0.3);
+    this.rumble = this.loop(this.sfxBus, "lowpass", 160, 0.9);
+    this.listener = { x: 0, y: 0, z: 0, yaw: 0 };
+    this.bellState = { active: false, next: 0, high: true };
     this.music = new Music(ctx, this.musicBus, this.reverb, this.noise);
 
     document.addEventListener("visibilitychange", () => {
@@ -297,13 +301,151 @@ export class Soundscape {
     this.bell(t + 1.1, 98, { gain: 0.35, decay: 7, partials: [1, 2, 2.76, 3.9, 5.2], out: this.sfxBus, wet: 0.9 });
   }
 
+  // ---------- sounds placed in the world ----------
+
+  // Loudness falls off with distance; pan follows where the source is relative to where you face.
+  spatial(x, y, z, ref = 10) {
+    const L = this.listener;
+    const dx = x - L.x, dz = z - L.z;
+    const d = Math.hypot(dx, (y - L.y) * 0.6, dz);
+    const rightX = Math.cos(L.yaw), rightZ = -Math.sin(L.yaw);
+    const pan = d > 0.5 ? ((dx * rightX + dz * rightZ) / Math.hypot(dx, dz)) * 0.75 : 0;
+    return { gain: Math.min(1, ref / Math.max(ref, d)), pan: Math.max(-1, Math.min(1, pan || 0)), d };
+  }
+
+  // A two-tone train horn, a little late if it's far away.
+  horn(x, z) {
+    if (!this.running) return;
+    const sp = this.spatial(x, 10, z, 30);
+    if (sp.gain < 0.03) return;
+    const t = this.ctx.currentTime + sp.d / 343;
+    for (const f of [370, 466]) {
+      this.tone(t, { freq: f, to: f * 0.99, dur: 1.3, type: "sawtooth", gain: 0.05 * sp.gain, attack: 0.08, pan: sp.pan, wet: 0.5 });
+    }
+  }
+
+  clack(x, z) {
+    if (!this.running) return;
+    const sp = this.spatial(x, 9, z, 14);
+    if (sp.gain < 0.05) return;
+    const t = this.ctx.currentTime;
+    this.noiseHit(t, { dur: 0.06, freq: 1900, q: 1.5, gain: 0.18 * sp.gain, pan: sp.pan });
+    this.noiseHit(t + 0.11, { dur: 0.06, freq: 1700, q: 1.5, gain: 0.14 * sp.gain, pan: sp.pan });
+  }
+
+  // Rumble while the train moves; `x` is the train's position along the line.
+  trainRumble(x, z, speed, visible) {
+    if (!this.running) return;
+    const sp = this.spatial(x, 9, z, 20);
+    const level = visible ? sp.gain * Math.min(1, speed / 10) * 0.35 : 0;
+    this.rumble.gain.gain.setTargetAtTime(level, this.ctx.currentTime, 0.3);
+  }
+
+  // Kan-kan-kan: the level crossing bell, alternating two pitches.
+  crossingBell(active, x, z) {
+    if (!this.running) return;
+    this.bellState.active = active;
+    if (!active) return;
+    const now = this.ctx.currentTime;
+    if (now < this.bellState.next) return;
+    this.bellState.next = now + 0.42;
+    this.bellState.high = !this.bellState.high;
+    const sp = this.spatial(x, 3, z, 12);
+    if (sp.gain < 0.03) return;
+    this.bell(now, this.bellState.high ? 740 : 620, { gain: 0.09 * sp.gain, decay: 0.5, partials: [1, 2.4, 4.1], out: this.sfxBus, pan: sp.pan, wet: 0.2 });
+  }
+
+  // The little melody a Japanese station plays as the train departs.
+  stationChime(x, z) {
+    if (!this.running) return;
+    const sp = this.spatial(x, 9, z, 25);
+    if (sp.gain < 0.05) return;
+    const t = this.ctx.currentTime;
+    [659, 784, 1047, 988, 784, 880, 1175, 1047].forEach((f, i) => {
+      this.bell(t + i * 0.22, f, { gain: 0.07 * sp.gain, decay: 0.9, partials: [1, 2, 3.01], out: this.sfxBus, pan: sp.pan, wet: 0.4 });
+    });
+  }
+
+  fireworkLaunch(x, y, z) {
+    if (!this.running) return;
+    const sp = this.spatial(x, y, z, 30);
+    this.tone(this.ctx.currentTime, { freq: 600, to: 1500, dur: 1.6, gain: 0.025 * sp.gain, attack: 0.1, pan: sp.pan, out: this.sfxBus });
+  }
+
+  // Light arrives at once; the boom follows at the speed of sound.
+  fireworkBoom(x, y, z, type) {
+    if (!this.running) return;
+    const sp = this.spatial(x, y, z, 40);
+    const t = this.ctx.currentTime + sp.d / 343;
+    this.tone(t, { freq: 70, to: 32, dur: 1.1, gain: 0.5 * sp.gain, attack: 0.01, pan: sp.pan, wet: 0.6 });
+    this.noiseHit(t, { dur: 1.2, type: "lowpass", freq: 700, gain: 0.35 * sp.gain, attack: 0.01, pan: sp.pan });
+    if (type === "crackle" || type === "willow") {
+      for (let i = 0; i < 22; i++) {
+        this.noiseHit(t + 0.9 + Math.random() * 1.4, { dur: 0.03, freq: 3000 + Math.random() * 2000, q: 2, gain: 0.07 * sp.gain, pan: sp.pan + (Math.random() - 0.5) * 0.3 });
+      }
+    }
+  }
+
+  meow(x, z) {
+    if (!this.running) return;
+    const sp = this.spatial(x, 0.3, z, 4);
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(520, t);
+    o.frequency.linearRampToValueAtTime(760, t + 0.18);
+    o.frequency.linearRampToValueAtTime(470, t + 0.55);
+    const f1 = this.ctx.createBiquadFilter();
+    f1.type = "bandpass";
+    f1.frequency.setValueAtTime(900, t);
+    f1.frequency.linearRampToValueAtTime(1400, t + 0.2);
+    f1.frequency.linearRampToValueAtTime(700, t + 0.55);
+    f1.Q.value = 3;
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(0.12 * sp.gain, t + 0.06);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    const pan = this.ctx.createStereoPanner();
+    pan.pan.value = sp.pan;
+    o.connect(f1).connect(env).connect(pan).connect(this.sfxBus);
+    o.start(t);
+    o.stop(t + 0.65);
+  }
+
+  purr() {
+    if (!this.running) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const f = this.ctx.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.value = 260;
+    const am = this.ctx.createGain();
+    am.gain.value = 0.5;
+    const lfo = this.ctx.createOscillator();
+    lfo.frequency.value = 26;
+    const depth = this.ctx.createGain();
+    depth.gain.value = 0.5;
+    lfo.connect(depth).connect(am.gain);
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(0.5, t + 0.3);
+    env.gain.setValueAtTime(0.5, t + 2.2);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
+    src.connect(f).connect(am).connect(env).connect(this.sfxBus);
+    for (const n of [src, lfo]) {
+      n.start(t);
+      n.stop(t + 2.9);
+    }
+  }
+
   // ---------- per frame ----------
   setMood(state) {
     this.night = state.night;
     if (this.music) this.music.night = state.night;
   }
 
-  update(dt, t, pos) {
+  update(dt, t, pos, yaw = 0) {
     if (!this.running) return;
     const now = this.ctx.currentTime;
     const { lake, village } = WORLD;
@@ -316,6 +458,15 @@ export class Soundscape {
     this.wind.filter.frequency.setTargetAtTime(380 + 520 * gust, now, 0.4);
 
     // lapping water near the lake
+    Object.assign(this.listener, { x: pos.x, y: pos.y + 1.6, z: pos.z, yaw });
+
+    // the falls roar close up; the river murmurs along its banks
+    const fl = WORLD.falls;
+    const fallsNear = this.spatial(fl.x, fl.pool + 8, fl.z, 14).gain;
+    const riverNear = Math.max(0, 1 - Math.max(0, riverInfo(pos.x, pos.z).d - 4) / 30);
+    this.falls.gain.gain.setTargetAtTime(Math.max(fallsNear * 0.55, riverNear * 0.12), now, 0.3);
+    this.falls.filter.frequency.setTargetAtTime(700 + fallsNear * 1400, now, 0.3);
+
     const lakeDist = Math.hypot(pos.x - lake.x, pos.z - lake.z);
     const nearLake = Math.max(0, 1 - Math.max(0, lakeDist - lake.r * 0.7) / 30);
     this.water.gain.gain.setTargetAtTime(nearLake * (0.1 + 0.05 * Math.sin(t * 1.3)), now, 0.3);

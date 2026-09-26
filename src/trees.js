@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { toon } from "./toon.js";
 import { Instancer, mat } from "./instancer.js";
-import { WORLD, heightAt, slopeAt, distToPath } from "./terrain.js";
+import { WORLD, heightAt, slopeAt, distToPath, builtUp } from "./terrain.js";
 
 const geo = {
   trunk: new THREE.CylinderGeometry(0.22, 0.38, 1, 7).translate(0, 0.5, 0),
@@ -94,6 +94,8 @@ export function createTrees(rand, colliders) {
   const { lake, village, shrineHill, camphorHill } = WORLD;
   const clear = (x, z, pad) =>
     distToPath(x, z) > pad &&
+    builtUp(x, z) < 0.05 &&
+    Math.hypot(x - WORLD.falls.x, z - WORLD.falls.z) > 14 &&
     Math.hypot(x - lake.x, z - lake.z) > lake.r + 1 &&
     Math.hypot(x - village.x, z - village.z) > village.r * 0.8 &&
     Math.hypot(x - camphorHill.x, z - camphorHill.z) > 14 &&

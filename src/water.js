@@ -52,7 +52,8 @@ const frag = /* glsl */ `
     float foam = smoothstep(0.35, 0.3, edge) + smoothstep(0.7, 0.66, edge) * smoothstep(0.55, 0.6, edge) * 0.8;
     col = mix(col, vec3(1.0), clamp(foam, 0.0, 1.0));
 
-    gl_FragColor = vec4(col, 0.92);
+    // clearer in the shallows so the koi show through
+    gl_FragColor = vec4(col, mix(0.62, 0.93, smoothstep(0.3, 2.5, vDepth)));
     #include <colorspace_fragment>
     #include <fog_fragment>
   }

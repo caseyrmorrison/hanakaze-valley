@@ -4,7 +4,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
-import { WORLD, createTerrain } from "./terrain.js";
+import { WORLD, FALLS_DIR, createTerrain } from "./terrain.js";
 import { createSky, createClouds } from "./sky.js";
 import { bakeGroundTexture, createGrass } from "./grass.js";
 import { createTrees } from "./trees.js";
@@ -16,6 +16,13 @@ import { Soundscape } from "./audio.js";
 import { createCast } from "./cast.js";
 import { updateCast, nearestTalkable } from "./behaviors.js";
 import { Dialogue } from "./dialogue.js";
+import { createRiver } from "./river.js";
+import { createRailway, CROSSING_X, RW } from "./railway.js";
+import { createTrain } from "./train.js";
+import { createPaddies } from "./paddies.js";
+import { createWildlife } from "./wildlife.js";
+import { createFestival } from "./festival.js";
+import { createCatMember } from "./cat.js";
 import { MOODS, blendMoods, dirFromAngles } from "./daycycle.js";
 import { mulberry32 } from "./instancer.js";
 
@@ -27,6 +34,7 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.localClippingEnabled = true;
 canvas.addEventListener("webglcontextlost", () => {
   window.showLoadError?.("The browser stopped the game's graphics (WebGL context lost). Reloading the page usually fixes it.");
 });
@@ -61,7 +69,14 @@ const water = createWater();
 const petals = createPetals();
 const fireflies = createFireflies(groundTex);
 
-scene.add(sky.mesh, clouds.group, terrain, grass.mesh, trees.group, structures.group, water.mesh, petals.mesh, fireflies.points);
+const river = createRiver(colliders);
+const railway = createRailway(colliders);
+const train = createTrain(colliders);
+const paddies = createPaddies();
+const wildlife = createWildlife(groundTex);
+
+scene.add(sky.mesh, clouds.group, terrain, grass.mesh, trees.group, structures.group, water.mesh, petals.mesh, fireflies.points,
+  river.group, railway.group, train.group, paddies.group, wildlife.group);
 
 const player = new Player(camera, canvas, colliders);
 
@@ -83,8 +98,12 @@ function toggleSound() {
 soundBtn.addEventListener("click", toggleSound);
 showSoundState();
 
+const festival = createFestival(sound);
+scene.add(festival.group);
+
 // ---------- residents ----------
 const cast = createCast(scene, colliders);
+cast.push(createCatMember(scene, colliders));
 const dialogue = new Dialogue(sound);
 
 function interact() {
@@ -107,7 +126,10 @@ const moonDir = dirFromAngles([38, 60]);
 const shallow = new THREE.Color("#4fd8cf"), deep = new THREE.Color("#1f64b8");
 const clockEl = document.getElementById("clock");
 
+let mood = null;
+
 function applyMood(s) {
+  mood = s;
   const u = sky.uniforms;
   u.uTop.value.copy(s.top);
   u.uHorizon.value.copy(s.horizon);
@@ -156,7 +178,14 @@ function nextMood() {
   sound.chime();
 }
 
+// Photo mode hides the interface and adds cinematic letterbox bars.
+function togglePhotoMode() {
+  const on = document.body.classList.toggle("photo");
+  if (on) dialogue.close();
+}
+
 addEventListener("keydown", (e) => {
+  if (e.code === "KeyP" && player.enabled) togglePhotoMode();
   if (e.code === "KeyT") nextMood();
   if (e.code === "KeyM") toggleSound();
   if (e.code === "KeyE" && player.enabled) interact();
@@ -164,6 +193,9 @@ addEventListener("keydown", (e) => {
 
 // ---------- places ----------
 const PLACES = [
+  { name: "Kirifuri Falls", x: WORLD.falls.x + FALLS_DIR.x * 6, z: WORLD.falls.z + FALLS_DIR.z * 6, r: 22 },
+  { name: "Hanakaze Station", x: 0, z: 103, r: 18 },
+  { name: "Terraced Paddies", x: (WORLD.paddies.x0 + WORLD.paddies.x1) / 2, z: (WORLD.paddies.z0 + WORLD.paddies.z1) / 2, r: 26 },
   { name: "Kaze Shrine", x: 0, z: WORLD.shrineHill.z + 4, r: 16 },
   { name: "Path of a Thousand Gates", x: 0, z: -80, r: 24 },
   { name: "Lake Kagami", x: WORLD.lake.x, z: WORLD.lake.z, r: WORLD.lake.r + 6 },
@@ -237,12 +269,27 @@ function frame() {
     u.uCenter.value.copy(camera.position);
   }
   water.uniforms.uTime.value = t;
-  sound.update(dt, t, player.pos);
+  sound.update(dt, t, player.pos, player.yaw);
+
+  // the living world
+  const lampLevel = Math.min(1, mood.lanterns / 1.6);
+  river.update(t, mood.grass);
+  const rail = train.update(dt, lampLevel);
+  railway.update(dt, rail.crossing, lampLevel);
+  sound.trainRumble(train.x, RW.z, rail.speed, rail.visible);
+  sound.crossingBell(rail.crossing, CROSSING_X, RW.z);
+  if (rail.horn) sound.horn(train.x, RW.z);
+  if (rail.chime) sound.stationChime(0, WORLD.station.z0 + 1);
+  for (let i = 0; i < rail.clacks; i++) sound.clack(train.x, RW.z);
+  paddies.update(t, mood);
+  wildlife.update(dt, t, mood);
+  festival.update(dt, t, mood.night, camera);
 
   const gust = 0.55 + 0.45 * Math.sin(t * 0.21) * Math.sin(t * 0.083 + 1.3);
   updateCast(cast, { dt, t, gust, player: player.pos, talkingTo: dialogue.member, sound });
   if (player.enabled) {
-    dialogue.setPrompt(nearestTalkable(cast, player.pos, player.yaw));
+    const photo = document.body.classList.contains("photo");
+    dialogue.setPrompt(photo ? null : nearestTalkable(cast, player.pos, player.yaw));
     dialogue.update(dt);
   }
 

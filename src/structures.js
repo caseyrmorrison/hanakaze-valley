@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { toon } from "./toon.js";
 import { Instancer, mat } from "./instancer.js";
-import { WORLD, heightAt, PATHS } from "./terrain.js";
+import { WORLD, heightAt, PATHS, builtUp } from "./terrain.js";
 
 const box = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
 const cyl = new THREE.CylinderGeometry(1, 1, 1, 12).translate(0, 0.5, 0);
@@ -155,7 +155,7 @@ export function createStructures(rand, colliders, camphor) {
         const px = ax + ((bx - ax) * t) / len + nx * 2.8 * side;
         const pz = az + ((bz - az) * t) / len + nz * 2.8 * side;
         if (pz < -56 && Math.abs(px) < 4) continue; // inside the torii tunnel
-        if (heightAt(px, pz) > 0.8) stoneLantern(inst, colliders, px, pz);
+        if (heightAt(px, pz) > 0.8 && builtUp(px, pz) < 0.1) stoneLantern(inst, colliders, px, pz);
       }
     }
   }
