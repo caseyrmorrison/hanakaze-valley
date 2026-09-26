@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { WORLD, heightAt, distToPath, fbm } from "./terrain.js";
+import { WORLD, heightAt, distToPath, fbm, builtUp } from "./terrain.js";
 
 // Bake terrain height (R) and grass density (G) into a texture the grass shader samples.
 export function bakeGroundTexture(res = 512) {
@@ -24,6 +24,7 @@ export function bakeGroundTexture(res = 512) {
       density *= 1 - THREE.MathUtils.smoothstep(slope, 0.8, 1.2);
       density *= 1 - THREE.MathUtils.smoothstep(h, 45, 60);
       density *= THREE.MathUtils.smoothstep(fbm(x * 0.03 + 11, z * 0.03 - 5), -0.45, -0.2);
+      density *= 1 - builtUp(x, z);
       const k = (j * res + i) * 4;
       data[k] = toHalf(h);
       data[k + 1] = toHalf(density);

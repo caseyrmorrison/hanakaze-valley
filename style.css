@@ -259,3 +259,23 @@ html, body {
   #title-card, #enter, #place, #sound { transition: none; }
   #dialogue.done .more { animation: none; }
 }
+
+/* Photo mode: hide the interface, add cinematic letterbox bars. */
+body.photo #hud,
+body.photo #sound,
+body.photo #talk,
+body.photo #dialogue { display: none; }
+
+body.photo::before,
+body.photo::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 9vh;
+  background: #0b0910;
+  pointer-events: none;
+}
+
+body.photo::before { top: 0; }
+body.photo::after { bottom: 0; }

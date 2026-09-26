@@ -15,6 +15,16 @@ stall, Mio paints the lake gate from the pier, Rin "meditates" under the old
 camphor (she was asleep), and Kiko runs letters between the village and the
 shrine, always late. Walk up to one and press E to talk.
 
+Beyond the lake, Kirifuri Falls pours off a cliff into a river that winds down
+to the water, with a viewing deck and a small jizo statue. A two-car local train
+runs the length of the valley between mountain tunnels, stopping at tiny
+Hanakaze Station (vending machine included) and setting off the level crossing
+on the way to the terraced rice paddies. Koi circle in the lake, butterflies and
+dragonflies drift over the meadows and water, birds cross the sky, and Mochi the
+village cat will follow you around if you let her. From twilight on, fireworks
+burst over the lake, paper lanterns float on the water and shooting stars cross
+the sky.
+
 All sound is synthesized live with the Web Audio API, so there are no audio
 files. A generative koto-and-flute score plays in the bright *yo* scale by day
 and the minor *in* scale at night. Around it: wind, birdsong (with the
@@ -41,6 +51,7 @@ Then open http://localhost:5391.
 | Space | Jump |
 | T | Next time of day: morning → golden hour → twilight → night |
 | E | Talk to the person you're facing; press again to continue |
+| P | Photo mode: hide the interface and add letterbox bars |
 | M | Mute or unmute sound (also the speaker button, bottom right) |
 
 On touch screens, drag with your left thumb to walk and your right to look.
@@ -59,5 +70,10 @@ On touch screens, drag with your left thumb to walk and your right to look.
 - `src/character.js`, `src/faces.js` — anime character rig, painted faces and expressions, manga emotes
 - `src/cast.js`, `src/behaviors.js` — the five residents, their props, routines and lines
 - `src/dialogue.js` — visual-novel dialogue box with typewriter text
+- `src/river.js` — Kirifuri Falls, the river, plunge pool, mist and viewing deck
+- `src/railway.js`, `src/train.js` — track, tunnels, level crossing, station, and the train and its timetable
+- `src/paddies.js` — flooded rice terraces
+- `src/wildlife.js`, `src/cat.js` — koi, butterflies, dragonflies, birds, and Mochi the cat
+- `src/festival.js` — fireworks, floating lanterns and shooting stars
 - `src/player.js` — first-person walking, collisions, touch controls
 - `src/main.js` — renderer, bloom, wiring and the frame loop
