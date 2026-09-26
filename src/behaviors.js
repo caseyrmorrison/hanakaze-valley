@@ -122,7 +122,7 @@ function painter(m, ctx) {
 function sleeper(m, ctx) {
   const c = m.character, s = c.state, { t, dt } = ctx;
   const sit = {
-    rLegX: -1.45, lLegX: -1.4, bodyY: -0.72, torsoX: -0.2,
+    rLegX: -1.45, lLegX: -1.4, bodyY: -0.78, torsoX: -0.2,
     rShoulderX: -0.45, lShoulderX: -0.4, rElbowX: -0.8, lElbowX: -0.85, rShoulderZ: 0.05, lShoulderZ: -0.05,
   };
   s.asleep ??= true;

@@ -42,53 +42,75 @@ function curve(ctx, x0, y0, cx, cy, x1, y1, width, color = INK) {
   ctx.stroke();
 }
 
-// Big anime eye: tall iris with a gradient, two highlights and a heavy upper lash.
-function openEye(ctx, x, y, side, iris) {
-  ellipse(ctx, x, y, 13, 17, "#ffffff");
-  const g = ctx.createLinearGradient(0, y - 16, 0, y + 16);
+// Grown-up anime eye: almond-shaped, a smaller iris, soft shadow on the lid,
+// and a winged liner flick at the outer corner.
+function openEye(ctx, x, y, side, iris, lips) {
+  ellipse(ctx, x + side * 2, y - 10, 15, 7, colorAlpha(lips, 0.22));
+  ctx.beginPath();
+  ctx.moveTo(x - 15, y + 1);
+  ctx.quadraticCurveTo(x - 2, y - 17, x + 15, y - 2);
+  ctx.quadraticCurveTo(x + 2, y + 13, x - 15, y + 1);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  const g = ctx.createLinearGradient(0, y - 12, 0, y + 12);
   g.addColorStop(0, shade(iris, -0.3));
-  g.addColorStop(0.55, iris);
-  g.addColorStop(1, shade(iris, 0.25));
-  ellipse(ctx, x + side, y + 1, 10, 15, g);
-  ellipse(ctx, x + side, y + 2, 5, 8, shade(iris, -0.4));
-  ellipse(ctx, x - 4, y - 6, 4.5, 5, "#ffffff");
-  ellipse(ctx, x + 4, y + 7, 2, 2, "#ffffff");
-  curve(ctx, x - 15, y - 9, x, y - 25, x + 15, y - 11, 5);
-  curve(ctx, x + side * 13, y - 11, x + side * 17, y - 10, x + side * 20, y - 5, 3.5);
-  curve(ctx, x - 8, y + 17, x, y + 19, x + 8, y + 16, 1.5);
+  g.addColorStop(0.6, iris);
+  g.addColorStop(1, shade(iris, 0.2));
+  ellipse(ctx, x + side, y - 1, 8.5, 11, g);
+  ellipse(ctx, x + side, y, 4, 6, shade(iris, -0.4));
+  ellipse(ctx, x - 3, y - 5, 3, 3.5, "#ffffff");
+  ctx.restore();
+  curve(ctx, x - 16, y - 1, x - 2, y - 19, x + 16, y - 3, 4.5);
+  curve(ctx, x + side * 15, y - 3, x + side * 19, y - 5, x + side * 23, y - 10, 3.5);
+  curve(ctx, x - 9, y + 10, x + 1, y + 13, x + 11, y + 7, 1.3);
 }
 
-function drawEyes(ctx, kind, iris) {
+function colorAlpha(hex, a) {
+  const c = new THREE.Color(hex);
+  return `rgba(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)}, ${a})`;
+}
+
+function drawEyes(ctx, kind, iris, lips) {
   for (const side of [-1, 1]) {
     const x = CX + side * 30, y = CY;
-    if (kind === "open") openEye(ctx, x, y, side, iris);
+    if (kind === "open") openEye(ctx, x, y, side, iris, lips);
     else if (kind === "blink") curve(ctx, x - 14, y + 2, x, y + 8, x + 14, y + 2, 4);
     else if (kind === "happy") curve(ctx, x - 13, y + 5, x, y - 13, x + 13, y + 5, 4.5);
     else if (kind === "sleep") curve(ctx, x - 13, y + 3, x, y + 10, x + 13, y + 3, 3.5);
   }
 }
 
-function drawMouth(ctx, kind) {
-  const x = CX, y = CY + 40;
+// Lipstick in each resident's own shade.
+function drawMouth(ctx, kind, lips) {
+  const x = CX, y = CY + 38;
   if (kind === "neutral") {
-    curve(ctx, x - 6, y, x, y + 2.5, x + 6, y, 2.5, "#8a4b4b");
+    ellipse(ctx, x, y - 1, 7, 2.2, lips);
+    ellipse(ctx, x, y + 2, 6, 2.6, shade(lips, 0.06));
+    curve(ctx, x - 7, y + 0.5, x, y + 1.5, x + 7, y + 0.5, 1.2, shade(lips, -0.25));
   } else if (kind === "talk") {
-    ellipse(ctx, x, y + 2, 6.5, 5.5, "#9c3d3d");
-    ellipse(ctx, x, y + 5, 3.5, 2.2, "#e7777b");
+    ellipse(ctx, x, y + 2, 7, 5.5, lips);
+    ellipse(ctx, x, y + 2.5, 4.8, 3.6, "#7a2f3a");
   } else if (kind === "happy") {
     ctx.beginPath();
-    ctx.moveTo(x - 10, y - 2);
-    ctx.quadraticCurveTo(x, y + 16, x + 10, y - 2);
+    ctx.moveTo(x - 11, y - 2);
+    ctx.quadraticCurveTo(x, y + 15, x + 11, y - 2);
     ctx.closePath();
-    ctx.fillStyle = "#9c3d3d";
+    ctx.fillStyle = lips;
     ctx.fill();
-    ellipse(ctx, x, y + 6, 4, 2.5, "#e7777b");
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y);
+    ctx.quadraticCurveTo(x, y + 10, x + 8, y);
+    ctx.closePath();
+    ctx.fillStyle = "#7a2f3a";
+    ctx.fill();
   } else if (kind === "wavy") {
     ctx.beginPath();
     ctx.moveTo(x - 10, y);
     for (let i = 1; i <= 4; i++) ctx.lineTo(x - 10 + i * 5, y + (i % 2 ? -2.5 : 2.5));
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = "#8a4b4b";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = lips;
     ctx.lineJoin = "round";
     ctx.stroke();
   }
@@ -114,7 +136,7 @@ const EXPRESSIONS = {
   sleep: { eyes: "sleep", mouth: "neutral", blush: 0.5 },
 };
 
-export function faceTextures({ skin, iris, hair }) {
+export function faceTextures({ skin, iris, hair, lips }) {
   const out = {};
   for (const [name, e] of Object.entries(EXPRESSIONS)) {
     const c = makeCanvas(W, H);
@@ -125,15 +147,16 @@ export function faceTextures({ skin, iris, hair }) {
     ctx.translate(CX, CY);
     ctx.scale(FEATURE_SCALE, FEATURE_SCALE);
     ctx.translate(-CX, -CY);
+    // thin, arched brows
     for (const side of [-1, 1]) {
-      const bx = CX + side * 30, by = CY - 30;
-      const tilt = e.worried ? 5 : -2;
-      curve(ctx, bx - 11, by + (side < 0 ? tilt : -tilt) * 0.5, bx, by - 4, bx + 11, by - (side < 0 ? tilt : -tilt) * 0.5, 2.5, shade(hair, -0.15));
+      const bx = CX + side * 31, by = CY - 26;
+      const tilt = e.worried ? 5 : -3;
+      curve(ctx, bx - 12, by + (side < 0 ? tilt : -tilt) * 0.5, bx + side * 2, by - 7, bx + 12, by - (side < 0 ? tilt : -tilt) * 0.5, 2, shade(hair, -0.15));
     }
-    curve(ctx, CX + 1, CY + 22, CX + 3, CY + 25, CX + 1, CY + 27, 1.5, shade(skin, -0.2));
+    curve(ctx, CX + 1, CY + 20, CX + 3, CY + 24, CX + 1, CY + 26, 1.5, shade(skin, -0.2));
     drawBlush(ctx, e.blush);
-    drawEyes(ctx, e.eyes, iris);
-    drawMouth(ctx, e.mouth);
+    drawEyes(ctx, e.eyes, iris, lips);
+    drawMouth(ctx, e.mouth, lips);
     ctx.restore();
     out[name] = toTexture(c);
   }

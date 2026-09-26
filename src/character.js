@@ -44,8 +44,29 @@ function fringeGeometry(r) {
   return g;
 }
 
-function lathe(points, segments = 20) {
-  return new THREE.LatheGeometry(points.map(([x, y]) => new THREE.Vector2(x, y)), segments);
+function lathe(points, segments = 20, phiStart = 0, phiLength = Math.PI * 2) {
+  return new THREE.LatheGeometry(points.map(([x, y]) => new THREE.Vector2(x, y)), segments, phiStart, phiLength);
+}
+
+// Adult proportions: long legs, hips at 0.9 m, waist at 1.0 m, head about 1/7 of height.
+const HIP_Y = 0.9;
+const WAIST_Y = 1.0;
+const TORSO = [[0.001, -0.02], [0.098, -0.02], [0.1, 0.06], [0.112, 0.16], [0.125, 0.26], [0.135, 0.34], [0.14, 0.39], [0.11, 0.44], [0.045, 0.47], [0.001, 0.47]];
+const PELVIS = [[0.001, 0.8], [0.09, 0.8], [0.145, 0.86], [0.152, 0.92], [0.13, 0.98], [0.104, 1.02], [0.001, 1.02]];
+const TORSO_DEPTH = 0.78;
+
+function torsoRadius(y) {
+  for (let i = 1; i < TORSO.length; i++) {
+    const [r0, y0] = TORSO[i - 1], [r1, y1] = TORSO[i];
+    if (y <= y1) return r0 + ((r1 - r0) * (y - y0)) / Math.max(1e-6, y1 - y0);
+  }
+  return TORSO[TORSO.length - 1][0];
+}
+
+function doubleSided(material) {
+  const m = material.clone();
+  m.side = THREE.DoubleSide;
+  return m;
 }
 
 const REST = {
@@ -59,6 +80,7 @@ export class Character {
     this.def = def;
     this.name = def.name;
     this.root = new THREE.Group();
+    this.root.scale.setScalar(def.height ?? 1.04);
     this.body = new THREE.Group();
     this.root.add(this.body);
     this.pose = { ...REST };
@@ -77,11 +99,10 @@ export class Character {
       top: toon(def.top),
       bottom: toon(def.bottom),
       accent: toon(def.accent),
-      legs: toon(def.legs ?? SKIN),
       shoes: toon(def.shoes ?? "#4a3438"),
     };
     this.mats = m;
-    this.faces = faceTextures({ skin: SKIN, iris: def.iris, hair: def.hair });
+    this.faces = faceTextures({ skin: SKIN, iris: def.iris, hair: def.hair, lips: def.lips ?? "#c85a6a" });
     this.headMat = new THREE.MeshToonMaterial({
       map: this.faces.neutral, gradientMap: gradient3,
       emissive: 0xffffff, emissiveMap: this.faces.neutral, emissiveIntensity: 0.3,
@@ -91,6 +112,7 @@ export class Character {
     this.buildTorso();
     this.buildHead();
     this.buildArms();
+    def.outfit?.(this, m);
     def.extras?.(this, m);
 
     this.emoteSprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, fog: false }));
@@ -106,50 +128,49 @@ export class Character {
   }
 
   buildLegs() {
-    const { def, mats: m } = this;
-    const pants = def.bottomStyle === "pants";
+    const { mats: m } = this;
     this.legs = [-1, 1].map((side) => {
       const hip = new THREE.Group();
-      hip.position.set(side * 0.075, 0.86, 0);
-      hip.add(limb(pants ? 0.085 : 0.05, pants ? 0.66 : 0.72, pants ? m.bottom : m.legs, 0.06));
-      const foot = mesh(new THREE.BoxGeometry(0.09, 0.07, 0.2), m.shoes, { outline: 0.1 });
-      foot.position.set(0, -0.83, 0.04);
-      hip.add(foot);
+      hip.position.set(side * 0.078, HIP_Y, 0);
+      const thigh = mesh(capsule(0.066, 0.24), m.skin, { outline: 0.05 });
+      thigh.position.y = -0.19;
+      const shin = mesh(capsule(0.046, 0.38), m.skin, { outline: 0.06 });
+      shin.position.y = -0.58;
+      const foot = mesh(new THREE.BoxGeometry(0.085, 0.07, 0.2), m.shoes, { outline: 0.1 });
+      foot.position.set(0, -0.85, 0.04);
+      hip.add(thigh, shin, foot);
       this.body.add(hip);
       return hip;
     });
-    if (def.bottomStyle === "skirt") {
-      const hem = def.hem ?? 0.1, flare = def.flare ?? 0.28;
-      const skirt = mesh(lathe([[0.001, hem], [flare, hem], [flare * 0.85, (0.98 + hem) / 2 - 0.1], [0.15, 0.8], [0.118, 0.98], [0.001, 0.98]]),
-        m.bottom, { outline: 0.03 });
-      this.body.add(skirt);
-    }
+    // hips are always covered by the bottom garment's color
+    const pelvis = mesh(lathe(PELVIS), m.bottom, { outline: 0.03 });
+    pelvis.scale.z = 0.8;
+    this.body.add(pelvis);
   }
 
   buildTorso() {
     const { mats: m } = this;
     this.torso = new THREE.Group();
-    this.torso.position.y = 0.95;
+    this.torso.position.y = WAIST_Y;
     this.body.add(this.torso);
-    const chest = mesh(lathe([[0.001, 0], [0.108, 0], [0.12, 0.13], [0.132, 0.27], [0.135, 0.36], [0.1, 0.43], [0.04, 0.46], [0.001, 0.46]]),
-      m.top, { outline: 0.05 });
-    this.torso.add(chest);
-    const sash = mesh(new THREE.CylinderGeometry(0.122, 0.118, 0.1, 20), m.accent, { outline: 0.05 });
-    sash.position.y = 0.06;
-    this.torso.add(sash);
-    const neck = mesh(new THREE.CylinderGeometry(0.038, 0.042, 0.1, 12), m.skin);
-    neck.position.y = 0.49;
+    this.trunk = new THREE.Group();
+    this.trunk.scale.z = TORSO_DEPTH;
+    this.torso.add(this.trunk);
+    this.trunk.add(mesh(lathe(TORSO), m.skin, { outline: 0.05 }));
+    const neck = mesh(new THREE.CylinderGeometry(0.036, 0.04, 0.1, 12), m.skin);
+    neck.position.y = 0.5;
     this.torso.add(neck);
   }
 
   buildHead() {
     const { def, mats: m } = this;
     this.head = new THREE.Group();
-    this.head.position.y = 0.6;
+    this.head.position.y = 0.63;
+    this.head.scale.setScalar(0.92);
     this.torso.add(this.head);
 
     const skull = mesh(new THREE.SphereGeometry(HEAD_R, 32, 20), this.headMat, { outline: 0.05 });
-    skull.scale.set(1, 1.02, 0.98);
+    skull.scale.set(0.97, 1.07, 0.98);
     this.head.add(skull);
 
     const back = mesh(new THREE.SphereGeometry(HEAD_R * 1.1, 24, 16), m.hair, { outline: 0.05 });
@@ -158,8 +179,8 @@ export class Character {
     this.head.add(mesh(fringeGeometry(HEAD_R * 1.07), m.hair, { outline: 0.04 }));
 
     for (const side of [-1, 1]) {
-      const lock = mesh(capsule(0.026, def.lockLength ?? 0.13), m.hair, { outline: 0.1 });
-      lock.position.set(side * 0.128, -0.07, 0.035);
+      const lock = mesh(capsule(0.026, def.lockLength ?? 0.15), m.hair, { outline: 0.1 });
+      lock.position.set(side * 0.128, -0.08, 0.035);
       lock.rotation.z = side * 0.08;
       this.head.add(lock);
     }
@@ -167,28 +188,119 @@ export class Character {
   }
 
   buildArms() {
-    const { def, mats: m } = this;
+    const { mats: m } = this;
     this.arms = [-1, 1].map((side) => {
       const shoulder = new THREE.Group();
-      shoulder.position.set(side * 0.16, 0.39, 0);
+      shoulder.position.set(side * 0.165, 0.4, 0);
       this.torso.add(shoulder);
-      shoulder.add(limb(0.043, 0.2, m.top));
+      shoulder.add(limb(0.04, 0.22, m.skin, 0.07));
       const elbow = new THREE.Group();
-      elbow.position.y = -0.29;
+      elbow.position.y = -0.3;
       shoulder.add(elbow);
-      elbow.add(limb(0.038, 0.18, m.top));
-      if (def.wideSleeves) {
-        const sleeve = mesh(new THREE.CylinderGeometry(0.05, 0.1, 0.26, 12, 1, true), m.top, { outline: 0.04 });
-        sleeve.material = sleeve.material.clone();
-        sleeve.material.side = THREE.DoubleSide;
-        sleeve.position.y = -0.14;
-        elbow.add(sleeve);
-      }
-      const hand = mesh(new THREE.SphereGeometry(0.037, 12, 10), m.skin, { outline: 0.1 });
+      elbow.add(limb(0.034, 0.2, m.skin, 0.08));
+      const hand = mesh(new THREE.SphereGeometry(0.035, 12, 10), m.skin, { outline: 0.1 });
       hand.position.y = -0.29;
       elbow.add(hand);
       return { shoulder, elbow, hand };
     });
+  }
+
+  // ---------- clothing builders, used by each resident's outfit ----------
+
+  // A garment band hugging the torso between two heights; `open` leaves a gap at the front.
+  band(material, y0, y1, { pad = 0.008, open = 0, outline = 0.04 } = {}) {
+    const pts = [];
+    for (let i = 0; i <= 8; i++) {
+      const y = y0 + ((y1 - y0) * i) / 8;
+      pts.push([torsoRadius(y) + pad, y]);
+    }
+    const geo = open ? lathe(pts, 24, open, Math.PI * 2 - open * 2) : lathe(pts, 24);
+    const g = mesh(geo, open ? doubleSided(material) : material, { outline });
+    this.trunk.add(g);
+    return g;
+  }
+
+  // Chest, always drawn in the garment's own material (covered).
+  bust(material, size = 1) {
+    for (const side of [-1, 1]) {
+      const b = mesh(new THREE.SphereGeometry(0.074 * size, 18, 14), material, { outline: 0.05 });
+      b.position.set(side * 0.056, 0.285, 0.068);
+      b.scale.set(1, 0.92, 0.88);
+      this.torso.add(b);
+    }
+  }
+
+  // Skirt from the waist down to `hem`. `slitTop` opens side slits from the hem up to that
+  // height; `open` leaves the front open, for coat tails.
+  skirt(material, { hem, flare, slitTop = null, gap = 0.28, open = 0 }) {
+    const mat = doubleSided(material);
+    const radius = (y) => (y >= HIP_Y
+      ? THREE.MathUtils.lerp(0.165, 0.112, (y - HIP_Y) / (1.03 - HIP_Y))
+      : THREE.MathUtils.lerp(flare, 0.165, (y - hem) / (HIP_Y - hem)));
+    const profile = (y0, y1) => {
+      const pts = [];
+      for (let i = 0; i <= 8; i++) {
+        const y = y0 + ((y1 - y0) * i) / 8;
+        pts.push([radius(y), y]);
+      }
+      return pts;
+    };
+    const add = (geo) => this.body.add(mesh(geo, mat, { outline: 0.02 }));
+    const full = (pts) => (open ? lathe(pts, 28, open, Math.PI * 2 - open * 2) : lathe(pts, 28));
+    if (slitTop === null) {
+      add(full(profile(hem, 1.03)));
+      return;
+    }
+    add(full(profile(slitTop, 1.03)));
+    const lower = profile(hem, slitTop);
+    add(lathe(lower, 14, -Math.PI / 2 + gap, Math.PI - gap * 2));
+    add(lathe(lower, 14, Math.PI / 2 + gap, Math.PI - gap * 2));
+  }
+
+  shorts(material, length = 0.08) {
+    for (const hip of this.legs) {
+      const cuff = mesh(new THREE.CylinderGeometry(0.075, 0.073, length, 16), material, { outline: 0.05 });
+      cuff.position.y = -0.09 - length / 2;
+      hip.add(cuff);
+    }
+  }
+
+  pants(material) {
+    for (const hip of this.legs) {
+      const leg = mesh(capsule(0.085, 0.66), material, { outline: 0.05 });
+      leg.position.y = -0.43;
+      hip.add(leg);
+    }
+  }
+
+  socks(material, { thighHigh = false } = {}) {
+    for (const hip of this.legs) {
+      const sock = mesh(capsule(0.05, 0.38), material, { outline: 0.05 });
+      sock.position.y = -0.58;
+      hip.add(sock);
+      if (thighHigh) {
+        const top = mesh(new THREE.CylinderGeometry(0.07, 0.056, 0.16, 16), material, { outline: 0.05 });
+        top.position.y = -0.33;
+        hip.add(top);
+      }
+    }
+  }
+
+  // `upper` sleeves the upper arm from `from` down; `wide` adds a flared forearm sleeve.
+  sleeves(material, { upper = false, from = 0, wide = false } = {}) {
+    for (const { shoulder, elbow } of this.arms) {
+      if (upper) {
+        const len = 0.3 - from;
+        const s = mesh(new THREE.CylinderGeometry(0.052, 0.05, len, 14), material, { outline: 0.05 });
+        s.position.y = -from - len / 2;
+        shoulder.add(s);
+      }
+      if (wide) {
+        const s = mesh(new THREE.CylinderGeometry(0.05, 0.11, 0.3, 14, 1, true), doubleSided(material), { outline: 0.04 });
+        s.position.y = -0.13;
+        elbow.add(s);
+      }
+    }
   }
 
   // Hair pieces that swing with the wind: pivot group plus rest angles.
@@ -247,7 +359,7 @@ export class Character {
   }
 
   headHeight() {
-    return this.body.position.y + 1.55;
+    return this.body.position.y + 1.66;
   }
 
   update(dt, t, gust) {
